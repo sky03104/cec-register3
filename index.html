@@ -460,6 +460,9 @@ function save(){
   localStorage.setItem('hsh_ins',JSON.stringify(inspectors));
   localStorage.setItem('hsh_wt',JSON.stringify(workTypes));
   localStorage.setItem('hsh_q',JSON.stringify(queue));
+  // Debounced push to GAS (2s after last save)
+  clearTimeout(save._pushTimer);
+  save._pushTimer=setTimeout(function(){if(gasUrl)pushDBToGAS();},2000);
 }
 
 // TIME FORMAT: match spreadsheet format HH:MM:SS
@@ -1322,15 +1325,6 @@ function updateSyncBadge(){
   else if(syncStatus==='ok'){el.textContent='✓ 已同步';el.style.color='var(--green)';}
   else if(syncStatus==='err'){el.textContent='⚠ 同步失敗';el.style.color='var(--danger)';}
   else{el.textContent='';} 
-}
-
-// Override save to also push to GAS if connected
-const _origSave=save;
-function save(){
-  _origSave();
-  // Debounced push to GAS
-  clearTimeout(save._t);
-  save._t=setTimeout(()=>{if(gasUrl)pushDBToGAS();},2000);
 }
 
 init();
