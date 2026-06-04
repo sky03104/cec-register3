@@ -181,6 +181,20 @@ select.txt{-webkit-appearance:none;}
 .nbtn-ico{font-size:17px;display:block;margin-bottom:1px;}
 .nbadge{position:absolute;top:5px;right:50%;transform:translateX(9px);background:var(--danger);color:#fff;border-radius:8px;padding:1px 4px;font-size:8px;font-weight:700;display:none;}
 .empty{text-align:center;padding:34px 18px;color:var(--text3);}
+/* TODAY */
+.tr-card{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:10px;margin-bottom:7px;position:relative;}
+.tr-card.has-exit{border-color:rgba(74,222,128,.25);}
+.tr-card.no-exit{border-color:rgba(212,168,0,.3);}
+.tr-r1{display:flex;align-items:center;gap:6px;margin-bottom:5px;padding-right:80px;}
+.tr-fl{font-family:'Share Tech Mono',monospace;font-size:11px;font-weight:bold;color:var(--gold);background:var(--gold-dim);padding:2px 6px;border-radius:4px;flex-shrink:0;border:1px solid rgba(212,168,0,.2);}
+.tr-shop{font-size:13px;font-weight:700;flex:1;}
+.tr-cnt{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text2);}
+.tr-meta{font-size:11px;color:var(--text3);display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+.tr-exit-row{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:var(--rsm);font-size:11px;}
+.tr-exit-row.filled{background:var(--green-dim);color:var(--green);border:1px solid rgba(74,222,128,.2);}
+.tr-exit-row.empty-exit{background:var(--gold-dim);color:var(--gold);border:1px solid rgba(212,168,0,.2);cursor:pointer;}
+.tr-acts{position:absolute;top:8px;right:8px;}
+.tr-fill-btn{padding:4px 10px;background:var(--gold-dim);border:1px solid rgba(212,168,0,.4);border-radius:var(--rsm);color:var(--gold);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
 .empty-ico{font-size:36px;margin-bottom:9px;}
 </style>
 </head>
@@ -197,6 +211,7 @@ select.txt{-webkit-appearance:none;}
 <div class="tabs">
   <div class="tab active" id="tab-entry" onclick="switchTab('entry')"><span class="tab-ico">➕</span>登錄</div>
   <div class="tab" id="tab-queue" onclick="switchTab('queue')"><span class="tab-ico">📋</span>清單<span class="tbadge" id="tabBadge">0</span></div>
+  <div class="tab" id="tab-today" onclick="switchTab('today')"><span class="tab-ico">📝</span>今日</div>
   <div class="tab" id="tab-preview" onclick="switchTab('preview')"><span class="tab-ico">📊</span>預覽</div>
   <div class="tab" id="tab-db" onclick="switchTab('db')"><span class="tab-ico">🗂</span>資料庫</div>
   <div class="tab" id="tab-settings" onclick="switchTab('settings')"><span class="tab-ico">⚙️</span>設定</div>
@@ -260,6 +275,18 @@ select.txt{-webkit-appearance:none;}
     <div class="copy-area" id="copyArea"></div>
     <div class="divider"></div>
     <button class="exp-btn dan" onclick="clearQueue()">🗑️ 清空清單</button>
+  </div>
+</div>
+
+<!-- TODAY -->
+<div class="panel" id="panel-today">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">今日進出紀錄</div>
+    <button class="exp-btn pri" onclick="loadTodayRecords()" style="width:auto;padding:6px 12px;margin:0;font-size:11px">🔄 從試算表載入</button>
+  </div>
+  <div id="todayStatus" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+  <div id="todayList">
+    <div class="empty"><div class="empty-ico">📝</div><p>點上方「從試算表載入」<br>抓取今日已送出的紀錄</p></div>
   </div>
 </div>
 
@@ -349,6 +376,29 @@ select.txt{-webkit-appearance:none;}
   </div>
 </div>
 
+<!-- EXIT TIME MODAL -->
+<div class="moverlay" id="exitModal">
+  <div class="modal">
+    <div class="modal-title">🕑 補填退場資訊</div>
+    <div style="background:var(--surface3);border-radius:var(--rsm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text2)" id="exitModalInfo"></div>
+    <input type="hidden" id="exitRowNum">
+    <div class="form-row">
+      <div class="lbl">退場時間</div>
+      <input class="tinp" type="time" id="exitModalTime">
+      <button class="now-btn" onclick="setNow('exitModalTime')">現在時間</button>
+    </div>
+    <div class="form-row">
+      <div class="lbl">檢查者</div>
+      <input class="txt" type="text" id="exitModalIns" placeholder="檢查者姓名">
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px" id="exitInsChips"></div>
+    </div>
+    <div class="macts">
+      <button class="mbtn mbtn-c" onclick="closeMo('exitModal')">取消</button>
+      <button class="mbtn mbtn-s" onclick="saveExitTime()">✅ 儲存</button>
+    </div>
+  </div>
+</div>
+
 <!-- EDIT QUEUE MODAL -->
 <div class="moverlay" id="editModal">
   <div class="modal">
@@ -403,6 +453,7 @@ select.txt{-webkit-appearance:none;}
 <div class="bnav">
   <button class="nbtn active" id="nav-entry" onclick="switchTab('entry')"><span class="nbtn-ico">➕</span>登錄</button>
   <button class="nbtn" id="nav-queue" onclick="switchTab('queue')"><span class="nbtn-ico">📋</span>清單<span class="nbadge" id="navBadge">0</span></button>
+  <button class="nbtn" id="nav-today" onclick="switchTab('today')"><span class="nbtn-ico">📝</span>今日</button>
   <button class="nbtn" id="nav-preview" onclick="switchTab('preview')"><span class="nbtn-ico">📊</span>預覽</button>
   <button class="nbtn" id="nav-db" onclick="switchTab('db')"><span class="nbtn-ico">🗂</span>資料庫</button>
   <button class="nbtn" id="nav-settings" onclick="switchTab('settings')"><span class="nbtn-ico">⚙️</span>設定</button>
@@ -915,54 +966,63 @@ function showCopyText(){
 
 // GAS CODE
 const GAS_CODE=`// ============================
-// 原有功能：每日匯出Excel
+// 原有功能：每日匯出Excel（不需修改）
 // ============================
 function exportDailyExcel() {
-  const folderId = "1JaWrMWQQBGGt1BGGaUKqnwTVKQ9De8Na";
-  const folder = DriveApp.getFolderById(folderId);
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("打烊後");
+  var folderId = "1JaWrMWQQBGGt1BGGaUKqnwTVKQ9De8Na";
+  var folder = DriveApp.getFolderById(folderId);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName("打烊後");
   if (!sheet) throw new Error("找不到工作表：打烊後");
-  const reportDate = new Date();
+  var reportDate = new Date();
   reportDate.setDate(reportDate.getDate() - 1);
-  const fileName = (reportDate.getMonth()+1)+"月"+reportDate.getDate()+"日漢神巨蛋非營業時間 打烊後 進出管制表.xlsx";
-  const oldFiles = folder.getFilesByName(fileName);
+  var fileName = (reportDate.getMonth()+1)+"月"+reportDate.getDate()+"日漢神巨蛋非營業時間 打烊後 進出管制表.xlsx";
+  var oldFiles = folder.getFilesByName(fileName);
   while (oldFiles.hasNext()) oldFiles.next().setTrashed(true);
-  const exportUrl = "https://docs.google.com/spreadsheets/d/"+ss.getId()+"/export?format=xlsx";
-  const response = UrlFetchApp.fetch(exportUrl, {
-    headers:{Authorization:"Bearer "+ScriptApp.getOAuthToken()}, muteHttpExceptions:true
+  var exportUrl = "https://docs.google.com/spreadsheets/d/"+ss.getId()+"/export?format=xlsx";
+  var response = UrlFetchApp.fetch(exportUrl, {
+    headers: {Authorization: "Bearer "+ScriptApp.getOAuthToken()},
+    muteHttpExceptions: true
   });
-  if (response.getResponseCode()!==200) throw new Error("Excel匯出失敗");
+  if (response.getResponseCode() !== 200) throw new Error("Excel匯出失敗");
   folder.createFile(response.getBlob().setName(fileName));
-  const today=new Date();
+  var today = new Date();
   sheet.getRange("G1").setValue((today.getFullYear()-1911)+"年"+(today.getMonth()+1)+"月"+today.getDate()+"日");
   SpreadsheetApp.flush();
 }
 
 // ============================
-// 新功能：快速登錄工具 API
-// 欄位：紀錄ID|專櫃ID|樓層|專櫃名稱|人數|監工|進場|地點|施工項目|退場|檢查者|建立時間
+// 快速登錄工具 API
+// 欄位：A紀錄ID | B專櫃ID | C樓層 | D專櫃名稱 | E人數 | F監工
+//       G進場時間 | H施工地點 | I施工項目 | J退場時間 | K檢查者 | L建立時間
 // ============================
 function doPost(e) {
   try {
-    // Handle DB sync actions
-    if (e.parameter.action === 'setDB') {
+    var action = e.parameter.action || '';
+
+    // 共用資料庫：寫入
+    if (action === 'setDB') {
       return setDB(e.parameter.db);
     }
+
+    // 補填退場時間
+    if (action === 'updateExit') {
+      return updateExitTime(e);
+    }
+
+    // 一般進出資料寫入
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheetNm = e.parameter.sheetName || '進出資料表';
     var sheet = ss.getSheetByName(sheetNm);
-    if (!sheet) return jsonRes({status:'error',msg:'找不到分頁: '+sheetNm});
+    if (!sheet) return jsonRes({status:'error', msg:'找不到分頁: '+sheetNm});
+
     var rows = JSON.parse(e.parameter.rows);
     var now = new Date();
-    // 建立時間格式與現有資料一致：yyyy/M/d HH:mm:ss，強制純文字避免被解析成日期
-    var createdAt = Utilities.formatDate(now, 'Asia/Taipei', 'yyyy/M/d HH:mm:ss');
     var added = 0;
+
     rows.forEach(function(r) {
-      // 1. 查 專櫃表 取得 shopCode；若找不到則自動產生新代號並新增到專櫃表
       var shopCode = getOrCreateShopCode(ss, r.shop, r.floor);
       var nextRow = sheet.getLastRow() + 1;
-      // 2. 用 setValues 寫入，並把建立時間格式設為純文字，避免 Sheets 自動解析日期
       sheet.getRange(nextRow, 1, 1, 12).setValues([[
         genId(),
         shopCode,
@@ -975,12 +1035,13 @@ function doPost(e) {
         r.workType || '',
         r.exitTime || '',
         r.inspector || '',
-        createdAt
+        now
       ]]);
-      // 3. 強制 L 欄（建立時間）格式為純文字，避免 Sheets 自動轉成日期格式
-      sheet.getRange(nextRow, 12).setNumberFormat('@STRING@');
+      // L欄顯示格式 yyyy/M/d HH:mm:ss，底層仍是數值，可供 FILTER 公式比較
+      sheet.getRange(nextRow, 12).setNumberFormat('yyyy/M/d HH:mm:ss');
       added++;
     });
+
     return jsonRes({status:'ok', added:added});
   } catch(err) {
     return jsonRes({status:'error', msg:err.toString()});
@@ -988,11 +1049,123 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  var action = e&&e.parameter?e.parameter.action:'';
+  var action = (e && e.parameter) ? e.parameter.action : '';
+
+  // 今日紀錄：回傳當班時段（今天 20:00 ~ 明天 08:00，或昨天 20:00 ~ 今天 08:00）的資料
+  if (action === 'getTodayRows') {
+    return getTodayRows(e);
+  }
+
+  // 共用資料庫：讀取
   if (action === 'getDB') {
     return getDB();
   }
+
   return jsonRes({status:'ok', msg:'天鷹保全 API 正常 ✓'});
+}
+
+// ============================
+// 今日紀錄：依當班時段撈資料
+// 當班時段定義：
+//   20:00 以後 → 今天 20:00 ~ 明天 08:00
+//   08:00 以前 → 昨天 20:00 ~ 今天 08:00
+// ============================
+function getTodayRows(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetNm = (e && e.parameter && e.parameter.sheet) ? e.parameter.sheet : '進出資料表';
+    var sheet = ss.getSheetByName(sheetNm);
+    if (!sheet) return jsonRes({status:'error', msg:'找不到分頁: '+sheetNm});
+
+    var now = new Date();
+    var nowHour = now.getHours();
+
+    // 計算當班時段起訖
+    var shiftStart, shiftEnd;
+    if (nowHour >= 20) {
+      // 今晚班：今天 20:00 ~ 明天 08:00
+      shiftStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+      shiftEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, 8, 0, 0);
+    } else {
+      // 今早班（跨夜）：昨天 20:00 ~ 今天 08:00
+      shiftStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()-1, 20, 0, 0);
+      shiftEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+    }
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return jsonRes({status:'ok', rows:[]});
+
+    var data = sheet.getRange(2, 1, lastRow-1, 12).getValues();
+    var result = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var createdAt = data[i][11]; // L欄，Date 物件
+      if (!(createdAt instanceof Date)) continue;
+      if (createdAt < shiftStart || createdAt > shiftEnd) continue;
+
+      // 格式化時間顯示
+      var entryVal = data[i][6];
+      var exitVal  = data[i][9];
+
+      result.push({
+        rowNum:  i + 2,           // 試算表實際列號
+        id:      data[i][0],
+        floor:   data[i][2],
+        shop:    data[i][3],
+        count:   data[i][4],
+        sup:     data[i][5],
+        entry:   fmtTimeVal(entryVal),
+        loc:     data[i][7],
+        wtype:   data[i][8],
+        exit:    fmtTimeVal(exitVal),
+        ins:     data[i][10],
+        created: Utilities.formatDate(createdAt, 'Asia/Taipei', 'HH:mm:ss')
+      });
+    }
+
+    // 最新的排在前面
+    result.reverse();
+    return jsonRes({status:'ok', rows:result});
+
+  } catch(err) {
+    return jsonRes({status:'error', msg:err.toString()});
+  }
+}
+
+// ============================
+// 補填退場時間（直接更新試算表指定列）
+// ============================
+function updateExitTime(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheetNm = e.parameter.sheet || '進出資料表';
+    var sheet = ss.getSheetByName(sheetNm);
+    if (!sheet) return jsonRes({status:'error', msg:'找不到分頁: '+sheetNm});
+
+    var rowNum   = parseInt(e.parameter.rowNum);
+    var exitTime = e.parameter.exitTime || '';  // "HH:MM:SS"
+    var inspector = e.parameter.inspector || '';
+
+    if (isNaN(rowNum) || rowNum < 2) return jsonRes({status:'error', msg:'列號無效'});
+
+    // J欄（第10欄）= 退場時間，K欄（第11欄）= 檢查者
+    if (exitTime) sheet.getRange(rowNum, 10).setValue(exitTime);
+    if (inspector) sheet.getRange(rowNum, 11).setValue(inspector);
+
+    return jsonRes({status:'ok'});
+  } catch(err) {
+    return jsonRes({status:'error', msg:err.toString()});
+  }
+}
+
+// 格式化時間欄位（可能是字串 "HH:MM:SS" 或空白）
+function fmtTimeVal(val) {
+  if (!val) return '';
+  if (typeof val === 'string') return val.substring(0,5); // HH:MM
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'Asia/Taipei', 'HH:mm');
+  }
+  return String(val).substring(0,5);
 }
 
 // ============================
@@ -1002,8 +1175,8 @@ function getDB() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var dbSheet = ss.getSheetByName('_SharedDB');
-    if (!dbSheet) return jsonRes({status:'ok', db:null, msg:'no db sheet'});
-    var val = dbSheet.getRange(1,1).getValue();
+    if (!dbSheet) return jsonRes({status:'ok', db:null});
+    var val = dbSheet.getRange(1, 1).getValue();
     if (!val) return jsonRes({status:'ok', db:null});
     return jsonRes({status:'ok', db:JSON.parse(val)});
   } catch(err) {
@@ -1012,44 +1185,34 @@ function getDB() {
 }
 
 // ============================
-// 共用資料庫：寫入（doPost action=setDB）
+// 共用資料庫：寫入
 // ============================
 function setDB(dbJson) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var dbSheet = ss.getSheetByName('_SharedDB');
-    if (!dbSheet) {
-      dbSheet = ss.insertSheet('_SharedDB');
-    }
-    dbSheet.getRange(1,1).setValue(dbJson);
+    if (!dbSheet) dbSheet = ss.insertSheet('_SharedDB');
+    dbSheet.getRange(1, 1).setValue(dbJson);
     return jsonRes({status:'ok'});
   } catch(err) {
     return jsonRes({status:'error', msg:err.toString()});
   }
 }
 
-// 產生 8 位 hex ID
-function genId() {
-  var c = '0123456789abcdef', id = '';
-  for (var i = 0; i < 8; i++) id += c[Math.floor(Math.random() * 16)];
-  return id;
-}
-
+// ============================
 // 查詢或新增專櫃代號
-// 規則：查 專櫃表 B欄(名稱)+C欄(樓層) 找代號；找不到則取該樓層最大號+1，並新增一筆到專櫃表
+// ============================
 function getOrCreateShopCode(ss, name, floor) {
   try {
     var st = ss.getSheetByName('專櫃表');
-    if (!st) return name; // 找不到專櫃表就用名稱代替
+    if (!st) return name;
     var data = st.getDataRange().getValues();
-    // 先搜尋現有
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][1]).trim() === String(name).trim() &&
           String(data[i][2]).trim() === String(floor).trim()) {
-        return data[i][0]; // 找到，回傳代號
+        return data[i][0];
       }
     }
-    // 找不到 → 計算該樓層最大號並 +1
     var prefix = floor + '-';
     var maxNum = 0;
     for (var j = 1; j < data.length; j++) {
@@ -1061,27 +1224,27 @@ function getOrCreateShopCode(ss, name, floor) {
     }
     var newNum = maxNum + 1;
     var newCode = prefix + (newNum < 10 ? '0' + newNum : String(newNum));
-    // 新增到專櫃表
     st.appendRow([newCode, name, floor]);
-    Logger.log('新增專櫃：' + newCode + ' ' + name + ' ' + floor);
     return newCode;
   } catch(err) {
-    Logger.log('getOrCreateShopCode error: ' + err);
     return name;
   }
 }
 
-function jsonRes(o) {
-  return ContentService.createTextOutput(JSON.stringify(o))
+// ============================
+// 工具函式
+// ============================
+function genId() {
+  var c = '0123456789abcdef', id = '';
+  for (var i = 0; i < 8; i++) id += c[Math.floor(Math.random() * 16)];
+  return id;
+}
+
+function jsonRes(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }`;
 
-function refreshPreview(){
-  const f=document.getElementById('previewFrame');
-  const base='https://docs.google.com/spreadsheets/d/1TnN3iJb1w9XTuw0-QuNrtXEOa71KCCy7y8Q3_1b1FmI/preview';
-  f.src=base+'?t='+Date.now();
-  showToast('刷新中...');
-}
 function updateGasStatus(){
   const dot=document.getElementById('sdot');
   const txt=document.getElementById('stxt');
@@ -1124,17 +1287,17 @@ async function sendToSheet(){
     if(d.status==='ok'){
       shops.forEach(s=>{if(s.isNew)delete s.isNew;});save();
       showToast('✅ 已送出 '+d.added+' 筆！','ok');
-      // Direct clear without confirm
       queue=[];save();renderQueue();
       document.getElementById('copyArea').style.display='none';
     }else showToast('失敗：'+d.msg,'err');
   }catch(err){showToast('網路錯誤','err');}
 }
-function copyGasCode(){navigator.clipboard.writeText(GAS_CODE).then(()=>showToast('✓ 程式碼已複製','ok'));}
+function copyGasCode(){navigator.clipboard.writeText(document.getElementById('gasCodeBox').textContent).then(()=>showToast('✓ 程式碼已複製','ok'));}
 function toggleStep(id){const el=document.getElementById(id);const btn=el.previousElementSibling.querySelector('.set-toggle');if(el.style.display==='none'){el.style.display='block';btn.textContent='隱藏';}else{el.style.display='none';btn.textContent='顯示';}}
 
 // DB
-function renderDBShops(q=''){
+function renderDBShops(q){
+  q=q||'';
   const items=q?shops.filter(s=>s.n.includes(q)||s.f.includes(q)):shops;
   const shown=items.slice(0,80);
   document.getElementById('dbShopList').innerHTML=
@@ -1152,7 +1315,8 @@ function renderDBShops(q=''){
         `</div>`:''}
     </div>`).join('')+(items.length>80?`<div class="dbi" style="color:var(--text3);font-size:10px">還有${items.length-80}筆，請搜尋</div>`:'');
 }
-function renderDBPersons(q=''){
+function renderDBPersons(q){
+  q=q||'';
   const items=q?persons.filter(p=>p.n.includes(q)):persons;
   document.getElementById('dbPersonList').innerHTML=items.slice(0,100).map(p=>`
     <div class="dbi"><span class="dbi-name">${x(p.n)}</span>
@@ -1162,7 +1326,8 @@ function renderDBPersons(q=''){
       </div>
     </div>`).join('');
 }
-function renderDBInspectors(q=''){
+function renderDBInspectors(q){
+  q=q||'';
   const items=q?inspectors.filter(p=>p.n.includes(q)):inspectors;
   document.getElementById('dbInsList').innerHTML=items.map(p=>`
     <div class="dbi"><span class="dbi-name">${x(p.n)}</span>
@@ -1242,89 +1407,175 @@ function saveDbEdit(){
   closeMo('dbEditModal');showToast('✓ 已修改','ok');
 }
 
-// TABS
-function switchTab(t){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('[id^="tab-"],[id^="nav-"]').forEach(b=>b.classList.remove('active'));
-  document.getElementById('panel-'+t).classList.add('active');
-  document.getElementById('tab-'+t).classList.add('active');
-  document.getElementById('nav-'+t).classList.add('active');
-  if(t==='db'){renderDBShops();renderDBPersons();renderDBInspectors();if(gasUrl&&syncStatus!=='loading')syncDBFromGAS();}
+// TODAY
+var todayRecords=[];
+async function loadTodayRecords(){
+  if(!gasUrl){showToast('請先在設定頁設定 GAS 連線','err');return;}
+  document.getElementById('todayStatus').textContent='⏳ 載入中...';
+  document.getElementById('todayList').innerHTML='<div class="empty"><div class="empty-ico">⏳</div><p>載入中...</p></div>';
+  try{
+    const res=await fetch(gasUrl+'?action=getTodayRows&sheet='+encodeURIComponent(sheetName));
+    const d=await res.json();
+    if(d.status==='ok'){
+      todayRecords=d.rows||[];
+      renderTodayList();
+      document.getElementById('todayStatus').textContent='✓ 共 '+todayRecords.length+' 筆，點「尚未退場」補填';
+    }else{
+      document.getElementById('todayStatus').textContent='載入失敗：'+d.msg;
+      showToast('載入失敗','err');
+    }
+  }catch(e){
+    document.getElementById('todayStatus').textContent='連線失敗';
+    showToast('連線失敗','err');
+  }
 }
-function closeMo(id){document.getElementById(id).classList.remove('open');}
-function showToast(msg,type=''){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.className='toast'+(type?' '+type:'');
-  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);
+function renderTodayList(){
+  if(!todayRecords.length){
+    document.getElementById('todayList').innerHTML='<div class="empty"><div class="empty-ico">📭</div><p>本班尚無進場紀錄</p></div>';
+    return;
+  }
+  var sorted=todayRecords.slice().sort(function(a,b){
+    if(!a.exit&&b.exit)return -1;
+    if(a.exit&&!b.exit)return 1;
+    return 0;
+  });
+  document.getElementById('todayList').innerHTML=sorted.map(function(r){
+    var hasExit=r.exit&&r.exit.trim()!=='';
+    return '<div class="tr-card '+(hasExit?'has-exit':'no-exit')+'">'+
+      '<div class="tr-r1">'+
+        '<span class="tr-fl">'+x(r.floor)+'</span>'+
+        '<span class="tr-shop">'+x(r.shop)+'</span>'+
+        '<span class="tr-cnt">'+r.count+'人</span>'+
+      '</div>'+
+      '<div class="tr-meta">'+
+        (r.sup?'<span>👤'+x(r.sup)+'</span>':'')+
+        (r.entry?'<span>🕐進 '+x(r.entry)+'</span>':'')+
+        (r.wtype?'<span>🔧'+x(r.wtype)+'</span>':'')+
+        (r.loc?'<span>📍'+x(r.loc)+'</span>':'')+
+        '<span style="color:var(--text3);font-size:10px">建立:'+x(r.created)+'</span>'+
+      '</div>'+
+      (hasExit?
+        '<div class="tr-exit-row filled">✅ 退場 '+x(r.exit)+(r.ins?' 檢:'+x(r.ins):'')+'</div>':
+        '<div class="tr-exit-row empty-exit" onclick="openExitModal('+r.rowNum+')">🕑 尚未退場 → 點此補填 ▶</div>'
+      )+
+    '</div>';
+  }).join('');
 }
-function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function openExitModal(rowNum){
+  var r=todayRecords.find(function(t){return t.rowNum===rowNum;});
+  if(!r)return;
+  document.getElementById('exitRowNum').value=rowNum;
+  document.getElementById('exitModalTime').value='';
+  document.getElementById('exitModalIns').value=r.ins||'';
+  document.getElementById('exitModalInfo').textContent='['+r.floor+'] '+r.shop+' '+r.count+'人'+(r.entry?' 進場:'+r.entry:'');
+  document.getElementById('exitInsChips').innerHTML=
+    inspectors.slice(0,12).map(function(p){
+      return '<div class="ichip" onclick="document.getElementById(\'exitModalIns\').value=\''+x(p.n)+'\'">'+x(p.n)+'</div>';
+    }).join('');
+  setNow('exitModalTime');
+  document.getElementById('exitModal').classList.add('open');
+}
+async function saveExitTime(){
+  if(!gasUrl){showToast('未設定連線','err');return;}
+  var rowNum=parseInt(document.getElementById('exitRowNum').value);
+  var exitTime=document.getElementById('exitModalTime').value;
+  var ins=document.getElementById('exitModalIns').value.trim();
+  if(!exitTime){showToast('請填退場時間','err');return;}
+  showToast('儲存中...');
+  try{
+    var body=new URLSearchParams();
+    body.append('action','updateExit');
+    body.append('sheet',sheetName);
+    body.append('rowNum',rowNum);
+    body.append('exitTime',exitTime+':00');
+    body.append('inspector',ins);
+    const res=await fetch(gasUrl,{method:'POST',body});
+    const d=await res.json();
+    if(d.status==='ok'){
+      var r=todayRecords.find(function(t){return t.rowNum===rowNum;});
+      if(r){r.exit=exitTime;r.ins=ins;}
+      renderTodayList();
+      closeMo('exitModal');
+      showToast('✅ 退場時間已儲存','ok');
+    }else showToast('儲存失敗：'+d.msg,'err');
+  }catch(e){showToast('連線失敗','err');}
+}
 
-
-// ============================================================
-// 共用資料庫同步（透過 GAS）
-// ============================================================
-let syncStatus='idle'; // idle | loading | ok | err
-
+// SYNC DB
+var syncStatus='idle';
 async function syncDBFromGAS(){
   if(!gasUrl)return;
-  syncStatus='loading';
-  updateSyncBadge();
+  syncStatus='loading';updateSyncBadge();
   try{
     const res=await fetch(gasUrl+'?action=getDB');
     const d=await res.json();
     if(d.status==='ok'&&d.db){
-      // Merge: server wins for shops/persons/inspectors/workTypes
       if(d.db.shops&&d.db.shops.length){
-        // Preserve local emps that might not be on server yet
-        d.db.shops.forEach(ss=>{
-          const local=shops.find(l=>l.n===ss.n&&l.f===ss.f);
-          if(local&&local.emps&&local.emps.length&&(!ss.emps||!ss.emps.length)) ss.emps=local.emps;
+        d.db.shops.forEach(function(ss){
+          const local=shops.find(function(l){return l.n===ss.n&&l.f===ss.f;});
+          if(local&&local.emps&&local.emps.length&&(!ss.emps||!ss.emps.length))ss.emps=local.emps;
         });
-        shops=d.db.shops;
-        shopNextId=Math.max(...shops.map(s=>s.id),0)+1;
+        shops=d.db.shops;shopNextId=Math.max(...shops.map(function(s){return s.id;}),0)+1;
       }
-      if(d.db.persons&&d.db.persons.length){
-        persons=d.db.persons;
-        personNextId=Math.max(...persons.map(p=>p.id),0)+1;
-      }
-      if(d.db.inspectors&&d.db.inspectors.length){
-        inspectors=d.db.inspectors;
-        insNextId=Math.max(...inspectors.map(p=>p.id),0)+1;
-      }
-      if(d.db.workTypes&&d.db.workTypes.length) workTypes=d.db.workTypes;
-      save();
-      buildWtChips();buildInsChips();
-      syncStatus='ok';
-      showToast('✓ 資料庫已同步','ok');
-    } else {
-      syncStatus='idle';
-    }
-  }catch(e){
-    syncStatus='err';
-  }
+      if(d.db.persons&&d.db.persons.length){persons=d.db.persons;personNextId=Math.max(...persons.map(function(p){return p.id;}),0)+1;}
+      if(d.db.inspectors&&d.db.inspectors.length){inspectors=d.db.inspectors;insNextId=Math.max(...inspectors.map(function(p){return p.id;}),0)+1;}
+      if(d.db.workTypes&&d.db.workTypes.length)workTypes=d.db.workTypes;
+      save();buildWtChips();buildInsChips();
+      syncStatus='ok';showToast('✓ 資料庫已同步','ok');
+    }else{syncStatus='idle';}
+  }catch(e){syncStatus='err';}
   updateSyncBadge();
 }
-
 async function pushDBToGAS(){
   if(!gasUrl)return;
   try{
     const body=new URLSearchParams();
     body.append('action','setDB');
-    body.append('db',JSON.stringify({shops,persons,inspectors,workTypes}));
+    body.append('db',JSON.stringify({shops:shops,persons:persons,inspectors:inspectors,workTypes:workTypes}));
     const res=await fetch(gasUrl,{method:'POST',body});
     const d=await res.json();
-    if(d.status==='ok') showToast('✓ 資料庫已同步到雲端','ok');
+    if(d.status==='ok')showToast('✓ 資料庫已同步到雲端','ok');
     else showToast('同步失敗：'+d.msg,'err');
   }catch(e){showToast('同步失敗','err');}
 }
-
 function updateSyncBadge(){
   const el=document.getElementById('syncBadge');
   if(!el)return;
   if(syncStatus==='loading'){el.textContent='⏳ 同步中...';el.style.color='var(--text2)';}
   else if(syncStatus==='ok'){el.textContent='✓ 已同步';el.style.color='var(--green)';}
   else if(syncStatus==='err'){el.textContent='⚠ 同步失敗';el.style.color='var(--danger)';}
-  else{el.textContent='';} 
+  else{el.textContent='';}
+}
+
+// TABS
+function switchTab(t){
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('[id^="tab-"],[id^="nav-"]').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('panel-'+t).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('nav-'+t).classList.add('active');
+  if(t==='db'){renderDBShops();renderDBPersons();renderDBInspectors();if(gasUrl&&syncStatus!=='loading')syncDBFromGAS();}
+  if(t==='today'&&gasUrl&&todayRecords.length===0){loadTodayRecords();}
+}
+function closeMo(id){document.getElementById(id).classList.remove('open');}
+function showToast(msg,type){
+  type=type||'';
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(type?' '+type:'');
+  t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2800);
+}
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+// GENERATE SHOP CODE (client-side for DB panel)
+function genShopCode(floor){
+  const prefix=floor+'-';
+  const localNums=shops.filter(function(s){return s.f===floor&&s.c&&s.c.indexOf(prefix)===0;})
+    .map(function(s){const n=parseInt(s.c.replace(prefix,''));return isNaN(n)?0:n;});
+  const maxKnown=FLOOR_MAX[floor]||0;
+  const maxLocal=localNums.length?Math.max.apply(null,localNums):0;
+  const next=Math.max(maxKnown,maxLocal)+1;
+  FLOOR_MAX[floor]=next;
+  return prefix+(next<10?'0'+next:String(next));
 }
 
 init();
