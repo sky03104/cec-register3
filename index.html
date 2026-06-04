@@ -352,6 +352,7 @@ select.txt{-webkit-appearance:none;}
   <div class="set-step">
     <div class="set-head"><div class="set-title">🔗 步驟二：Web App 網址</div><button class="set-toggle" onclick="toggleStep('s2b')">隱藏</button></div>
     <div id="s2b">
+      <div id="builtInNote" style="font-size:11px;padding:6px 9px;border-radius:6px;margin-bottom:8px;display:none"></div>
       <p class="set-body">部署後的 Web App URL：</p>
       <input class="url-inp" type="url" id="gasUrlInp" placeholder="https://script.google.com/macros/s/...">
       <button class="exp-btn suc" onclick="saveGasUrl()" style="margin-top:8px;margin-bottom:0">✅ 儲存並測試</button>
@@ -511,8 +512,13 @@ let persons=JSON.parse(localStorage.getItem('hsh_persons')||'null')||DEF_PERSONS
 let inspectors=JSON.parse(localStorage.getItem('hsh_ins')||'null')||DEF_INS.map(x=>({...x}));
 let workTypes=JSON.parse(localStorage.getItem('hsh_wt')||'null')||[...DEF_WT];
 let queue=JSON.parse(localStorage.getItem('hsh_q')||'[]');
-let gasUrl=localStorage.getItem('hsh_gasUrl')||'';
-let sheetName=localStorage.getItem('hsh_sheet')||'進出資料表';
+// ★ 預設連線設定（管理員填寫後，所有員工開啟就自動連線，不需手動設定）
+const BUILT_IN_GAS_URL   = 'https://script.google.com/macros/s/AKfycbwZ5f7h_Lv_MOCxPrqPpBPKA917-JKmEz5DDekYixLDsGf1QAKCTOuVxwo18OYKX7a4ng/exec'; // Web App URL
+const BUILT_IN_SHEET     = '進出資料表'; // ← 要寫入的分頁名稱
+
+// 優先用寫死的 URL；若沒有才用 localStorage（給個別員工自訂用）
+let gasUrl    = BUILT_IN_GAS_URL    || localStorage.getItem('hsh_gasUrl')    || '';
+let sheetName = BUILT_IN_SHEET      || localStorage.getItem('hsh_sheet')     || '進出資料表';
 let shopNextId=Math.max(...shops.map(s=>s.id),0)+1;
 let personNextId=Math.max(...persons.map(p=>p.id),0)+1;
 let insNextId=Math.max(...inspectors.map(p=>p.id),0)+1;
@@ -556,6 +562,23 @@ function init(){
   document.getElementById('gasCodeBox').textContent=GAS_CODE;
   document.getElementById('gasUrlInp').value=gasUrl;
   document.getElementById('sheetNameInp').value=sheetName;
+  // Show built-in URL status
+  var note=document.getElementById('builtInNote');
+  if(note){
+    if(BUILT_IN_GAS_URL){
+      note.style.display='block';
+      note.style.background='rgba(74,222,128,.1)';
+      note.style.border='1px solid rgba(74,222,128,.25)';
+      note.style.color='var(--green)';
+      note.textContent='✓ 已內建連線設定，員工開啟即自動連線';
+    } else {
+      note.style.display='block';
+      note.style.background='rgba(212,168,0,.1)';
+      note.style.border='1px solid rgba(212,168,0,.25)';
+      note.style.color='var(--gold)';
+      note.textContent='⚠ BUILT_IN_GAS_URL 尚未填入，請參考說明填寫後重新上傳';
+    }
+  }
   document.addEventListener('click',e=>{
     if(!e.target.closest('.dd')&&!e.target.closest('.sinp')&&!e.target.closest('.sup-mini')&&!e.target.closest('.floor-selector'))
       document.querySelectorAll('.dd.open').forEach(d=>d.classList.remove('open'));
@@ -1277,6 +1300,11 @@ function saveGasUrl(){
     if(d.status==='ok'){showToast('✓ 連線成功！','ok');updateGasStatus();renderQueue();syncDBFromGAS();}
     else showToast('連線異常：'+d.msg,'err');
   }).catch(()=>showToast('連線失敗','err'));
+}
+function saveSheetName(){
+  sheetName=document.getElementById('sheetNameInp').value.trim()||'進出資料表';
+  localStorage.setItem('hsh_sheet',sheetName);
+  showToast('✓ 已儲存：'+sheetName,'ok');
 }
 function saveSheetName(){
   sheetName=document.getElementById('sheetNameInp').value.trim()||'進出資料表';
