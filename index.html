@@ -376,25 +376,41 @@ select.txt{-webkit-appearance:none;}
   </div>
 </div>
 
-<!-- EXIT TIME MODAL -->
-<div class="moverlay" id="exitModal">
+<!-- TODAY EDIT MODAL -->
+<div class="moverlay" id="todayEditModal">
   <div class="modal">
-    <div class="modal-title">🕑 補填退場資訊</div>
-    <div style="background:var(--surface3);border-radius:var(--rsm);padding:8px 10px;margin-bottom:10px;font-size:12px;color:var(--text2)" id="exitModalInfo"></div>
-    <input type="hidden" id="exitRowNum">
-    <div class="form-row">
-      <div class="lbl">退場時間</div>
-      <input class="tinp" type="time" id="exitModalTime">
-      <button class="now-btn" onclick="setNow('exitModalTime')">現在時間</button>
+    <div class="modal-title" id="todayEditTitle">✏️ 編輯紀錄</div>
+    <input type="hidden" id="tedRowNum">
+    <div class="two-col">
+      <div class="form-row"><div class="lbl">樓層</div>
+        <select class="txt" id="tedFloor"><option>B1F</option><option>1F</option><option>2F</option><option>3F</option><option>4F</option><option>5F</option><option>6F</option><option>7F</option><option>8F</option><option>9F</option><option>10F</option></select>
+      </div>
+      <div class="form-row"><div class="lbl">人數</div>
+        <input class="txt" type="number" id="tedCount" min="1" inputmode="numeric">
+      </div>
     </div>
+    <div class="form-row"><div class="lbl">廠商／專櫃</div><input class="txt" type="text" id="tedShop"></div>
+    <div class="form-row"><div class="lbl">監工姓名</div><input class="txt" type="text" id="tedSup"></div>
+    <div class="two-col">
+      <div class="form-row"><div class="lbl">進場時間</div>
+        <input class="tinp" type="time" id="tedEntry">
+        <button class="now-btn" onclick="setNow('tedEntry')">現在</button>
+      </div>
+      <div class="form-row"><div class="lbl">退場時間</div>
+        <input class="tinp" type="time" id="tedExit">
+        <button class="now-btn" onclick="setNow('tedExit')">現在</button>
+      </div>
+    </div>
+    <div class="form-row"><div class="lbl">施工地點</div><input class="txt" type="text" id="tedLoc"></div>
+    <div class="form-row"><div class="lbl">施工項目</div><input class="txt" type="text" id="tedWtype"></div>
     <div class="form-row">
       <div class="lbl">檢查者</div>
-      <input class="txt" type="text" id="exitModalIns" placeholder="檢查者姓名">
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px" id="exitInsChips"></div>
+      <input class="txt" type="text" id="tedIns" placeholder="檢查者姓名">
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px" id="tedInsChips"></div>
     </div>
     <div class="macts">
-      <button class="mbtn mbtn-c" onclick="closeMo('exitModal')">取消</button>
-      <button class="mbtn mbtn-s" onclick="saveExitTime()">✅ 儲存</button>
+      <button class="mbtn mbtn-c" onclick="closeMo('todayEditModal')">取消</button>
+      <button class="mbtn mbtn-s" onclick="saveTodayEdit()">✅ 儲存</button>
     </div>
   </div>
 </div>
@@ -1442,6 +1458,10 @@ function renderTodayList(){
   document.getElementById('todayList').innerHTML=sorted.map(function(r){
     var hasExit=r.exit&&r.exit.trim()!=='';
     return '<div class="tr-card '+(hasExit?'has-exit':'no-exit')+'">'+
+      '<div class="tr-acts">'+
+        '<button class="qi-btn qi-edit" onclick="openTodayEdit('+r.rowNum+')">✏️</button>'+
+        '<button class="qi-btn qi-del" onclick="deleteTodayRow('+r.rowNum+')">🗑</button>'+
+      '</div>'+
       '<div class="tr-r1">'+
         '<span class="tr-fl">'+x(r.floor)+'</span>'+
         '<span class="tr-shop">'+x(r.shop)+'</span>'+
@@ -1455,49 +1475,92 @@ function renderTodayList(){
         '<span style="color:var(--text3);font-size:10px">建立:'+x(r.created)+'</span>'+
       '</div>'+
       (hasExit?
-        '<div class="tr-exit-row filled">✅ 退場 '+x(r.exit)+(r.ins?' 檢:'+x(r.ins):'')+'</div>':
-        '<div class="tr-exit-row empty-exit" onclick="openExitModal('+r.rowNum+')">🕑 尚未退場 → 點此補填 ▶</div>'
+        '<div class="tr-exit-row filled" onclick="openTodayEdit('+r.rowNum+')">✅ 退場 '+x(r.exit)+(r.ins?' 檢:'+x(r.ins):'')+'  （點此修改）</div>':
+        '<div class="tr-exit-row empty-exit" onclick="openTodayEdit('+r.rowNum+')">🕑 尚未退場 → 點此補填 ▶</div>'
       )+
     '</div>';
   }).join('');
 }
-function openExitModal(rowNum){
+function openTodayEdit(rowNum){
   var r=todayRecords.find(function(t){return t.rowNum===rowNum;});
   if(!r)return;
-  document.getElementById('exitRowNum').value=rowNum;
-  document.getElementById('exitModalTime').value='';
-  document.getElementById('exitModalIns').value=r.ins||'';
-  document.getElementById('exitModalInfo').textContent='['+r.floor+'] '+r.shop+' '+r.count+'人'+(r.entry?' 進場:'+r.entry:'');
-  document.getElementById('exitInsChips').innerHTML=
+  document.getElementById('tedRowNum').value=rowNum;
+  document.getElementById('todayEditTitle').textContent='✏️ 編輯 ['+r.floor+'] '+r.shop;
+  document.getElementById('tedFloor').value=r.floor||'B1F';
+  document.getElementById('tedShop').value=r.shop||'';
+  document.getElementById('tedCount').value=r.count||1;
+  document.getElementById('tedSup').value=r.sup||'';
+  document.getElementById('tedEntry').value=r.entry||'';
+  document.getElementById('tedExit').value=r.exit||'';
+  document.getElementById('tedLoc').value=r.loc||'';
+  document.getElementById('tedWtype').value=r.wtype||'';
+  document.getElementById('tedIns').value=r.ins||'';
+  document.getElementById('tedInsChips').innerHTML=
     inspectors.slice(0,12).map(function(p){
-      return '<div class="ichip" onclick="document.getElementById(\'exitModalIns\').value=\''+x(p.n)+'\'">'+x(p.n)+'</div>';
+      return '<div class="ichip" data-n="'+x(p.n)+'" onclick="setTedIns(this)">'+x(p.n)+'</div>';
     }).join('');
-  setNow('exitModalTime');
-  document.getElementById('exitModal').classList.add('open');
+  document.getElementById('todayEditModal').classList.add('open');
 }
-async function saveExitTime(){
+
+async function saveTodayEdit(){
   if(!gasUrl){showToast('未設定連線','err');return;}
-  var rowNum=parseInt(document.getElementById('exitRowNum').value);
-  var exitTime=document.getElementById('exitModalTime').value;
-  var ins=document.getElementById('exitModalIns').value.trim();
-  if(!exitTime){showToast('請填退場時間','err');return;}
+  var rowNum=parseInt(document.getElementById('tedRowNum').value);
+  var floor=document.getElementById('tedFloor').value;
+  var shop=document.getElementById('tedShop').value.trim();
+  var count=parseInt(document.getElementById('tedCount').value)||1;
+  var sup=document.getElementById('tedSup').value.trim();
+  var entry=document.getElementById('tedEntry').value;
+  var exit=document.getElementById('tedExit').value;
+  var loc=document.getElementById('tedLoc').value.trim();
+  var wtype=document.getElementById('tedWtype').value.trim();
+  var ins=document.getElementById('tedIns').value.trim();
+  if(!shop){showToast('廠商名稱不能為空','err');return;}
   showToast('儲存中...');
   try{
     var body=new URLSearchParams();
-    body.append('action','updateExit');
+    body.append('action','updateRow');
     body.append('sheet',sheetName);
     body.append('rowNum',rowNum);
-    body.append('exitTime',exitTime+':00');
+    body.append('floor',floor);
+    body.append('shop',shop);
+    body.append('count',count);
+    body.append('supervisor',sup);
+    body.append('entryTime',entry?(entry.length===5?entry+':00':entry):'');
+    body.append('exitTime',exit?(exit.length===5?exit+':00':exit):'');
+    body.append('location',loc);
+    body.append('workType',wtype);
     body.append('inspector',ins);
     const res=await fetch(gasUrl,{method:'POST',body});
     const d=await res.json();
     if(d.status==='ok'){
       var r=todayRecords.find(function(t){return t.rowNum===rowNum;});
-      if(r){r.exit=exitTime;r.ins=ins;}
+      if(r){r.floor=floor;r.shop=shop;r.count=count;r.sup=sup;
+            r.entry=entry;r.exit=exit;r.loc=loc;r.wtype=wtype;r.ins=ins;}
       renderTodayList();
-      closeMo('exitModal');
-      showToast('✅ 退場時間已儲存','ok');
+      closeMo('todayEditModal');
+      showToast('✅ 已儲存','ok');
     }else showToast('儲存失敗：'+d.msg,'err');
+  }catch(e){showToast('連線失敗','err');}
+}
+
+async function deleteTodayRow(rowNum){
+  if(!gasUrl){showToast('未設定連線','err');return;}
+  var r=todayRecords.find(function(t){return t.rowNum===rowNum;});
+  if(!r)return;
+  if(!confirm('['+r.floor+'] '+r.shop+' 這筆要刪除？'))return;
+  showToast('刪除中...');
+  try{
+    var body=new URLSearchParams();
+    body.append('action','deleteRow');
+    body.append('sheet',sheetName);
+    body.append('rowNum',rowNum);
+    const res=await fetch(gasUrl,{method:'POST',body});
+    const d=await res.json();
+    if(d.status==='ok'){
+      showToast('✅ 已刪除','ok');
+      todayRecords=[];
+      await loadTodayRecords();
+    }else showToast('刪除失敗：'+d.msg,'err');
   }catch(e){showToast('連線失敗','err');}
 }
 
@@ -1558,6 +1621,7 @@ function switchTab(t){
   if(t==='today'&&gasUrl&&todayRecords.length===0){loadTodayRecords();}
 }
 function closeMo(id){document.getElementById(id).classList.remove('open');}
+function setTedIns(el){document.getElementById('tedIns').value=el.getAttribute('data-n');}
 function showToast(msg,type){
   type=type||'';
   const t=document.getElementById('toast');
